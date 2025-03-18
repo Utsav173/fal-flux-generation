@@ -1,7 +1,7 @@
 'use client';
 
 import { generateImage } from './action';
-import { useActionState, useEffect, useState } from 'react';
+import { useActionState, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -17,12 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { ModeToggler } from '@/components/ui/ModeToggler';
-import {
-  FileImageIcon,
-  ListCollapseIcon,
-  SparklesIcon,
-  WandSparklesIcon,
-} from 'lucide-react';
+import { ListCollapseIcon, SparklesIcon, WandSparklesIcon } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   Dialog,
@@ -41,11 +36,13 @@ import {
 interface State {
   image: any;
   error: string | null;
+  prompt: string;
 }
 
 const initialState: State = {
   image: null,
   error: null,
+  prompt: '',
 };
 
 const ApiKeyModal = ({
@@ -57,8 +54,8 @@ const ApiKeyModal = ({
 }) => {
   return (
     <Dialog open={isOpen}>
-      <DialogContent className="[&>button]:hidden">
-        <DialogHeader>
+      <DialogContent className="[&>button]:hidden rounded-md border-none shadow-md">
+        <DialogHeader className="flex flex-col items-center my-3">
           <DialogTitle>API Key Modal</DialogTitle>
           <DialogDescription>
             This action save your API key state to use iamge generation feature
@@ -67,7 +64,7 @@ const ApiKeyModal = ({
         <Input
           type="text"
           id="api-key"
-          className="w-full p-2 text-sm border rounded-md border-green-400 focus-visible:ring-green-700"
+          className="w-full p-2 text-sm border rounded-md border-green-400/65 focus-visible:ring-green-700"
           placeholder="Enter Your API Key"
           onKeyDown={handleApiKeyChange}
         />
@@ -88,6 +85,7 @@ export default function Home() {
   const [outputFormat, setOutputFormat] = useState<string>('jpeg');
   const [safetyTolerance, setSafetyTolerance] = useState<number>(2);
   const [rawMode, setRawMode] = useState<boolean>(false);
+  const imageRef = useRef<HTMLImageElement>(null);
 
   useEffect(() => {
     if (state.error) toast.error(state.error);
@@ -138,24 +136,26 @@ export default function Home() {
         {/* Image rendering */}
         <div className="flex-grow overflow-hidden p-4">
           {isPending ? (
-            <div className="h-full w-full flex items-center justify-center">
-              <div className="animate-pulse  w-80 h-80 content-center bg-slate-100 rounded-lg shadow-lg">
-                <FileImageIcon className="mx-auto animate-bounce" />
-              </div>
+            <div className="h-full w-full flex items-center justify-center relative">
+              <div className="content-center loader" />
             </div>
           ) : (
-            <div className="h-full w-full flex items-center justify-center">
+            <div className="h-full flex items-center justify-center">
               {state.image ? (
-                <img
-                  src={state.image}
-                  alt="Generated image preview. Click to open in a new tab"
-                  className="rounded-lg object-contain max-h-full max-w-full cursor-pointer shadow-lg"
-                  onClick={onImageClick}
-                />
+                <div className="imageContainer">
+                  <img
+                    src={state.image}
+                    ref={imageRef}
+                    alt="Generated image preview. Click to open in a new tab"
+                    className="foregroundImg rounded-lg object-contain max-h-full max-w-full cursor-pointer"
+                    onClick={onImageClick}
+                  />
+                  <img className="backgroundImg" src={state.image} />
+                </div>
               ) : (
                 <>
                   <WandSparklesIcon />
-                  <div className="text-3xl text-nowrap w-full ml-2">
+                  <div className="text-3xl max-md:text-xl text-nowrap w-full ml-2">
                     Flux Image Generator
                   </div>
                 </>
@@ -164,11 +164,11 @@ export default function Home() {
           )}
         </div>
 
-        <div className="flex-none w-full bg-background/80 backdrop-blur-sm">
+        <div className="fixed bottom-5 flex-none w-full z-10">
           <form
             action={handleSubmit}
             className={cn(
-              'max-w-[60vw] max-lg:max-w-[75vw] max-md:max-w-[95vw] w-full mx-auto my-4',
+              'max-w-[60vw] max-lg:max-w-[75vw] max-md:max-w-[95vw] w-full mx-auto my-4 z-10',
               {
                 'opacity-50': isPending,
                 'pointer-events-none': isPending,
@@ -176,7 +176,7 @@ export default function Home() {
               }
             )}
           >
-            <div className="flex items-center relative border rounded-[35px] max-md:rounded-[25px] w-full flex-1 custom-textarea-gradient shadow-md">
+            <div className="flex items-center relative border rounded-[30px] max-md:rounded-[25px] w-full flex-1 custom-textarea-gradient shadow-md rounded-br-none bg-background/80 backdrop-blur-md">
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
@@ -190,7 +190,7 @@ export default function Home() {
                 </PopoverTrigger>
 
                 <PopoverContent
-                  className="w-[60vw] max-lg:w-[75vw] max-md:w-[95vw] p-4 shadow-md rounded-[20px]"
+                  className="w-[calc(60vw_-_6px)] max-lg:w-[75vw] max-md:w-[calc(95vw+2px)] p-4 shadow-md rounded-[20px]"
                   align="start"
                   sideOffset={20}
                   alignOffset={-10}
@@ -208,10 +208,10 @@ export default function Home() {
                             onValueChange={(value) => setAspectRatio(value)}
                             value={aspectRatio}
                           >
-                            <SelectTrigger>
+                            <SelectTrigger className="rounded-full">
                               <SelectValue placeholder="1:1" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="rounded-lg">
                               <SelectItem value="21:9">21:9</SelectItem>
                               <SelectItem value="16:9">16:9</SelectItem>
                               <SelectItem value="3:2">3:2</SelectItem>
@@ -242,10 +242,10 @@ export default function Home() {
                             disabled={isPending}
                             onValueChange={(value) => setOutputFormat(value)}
                           >
-                            <SelectTrigger>
+                            <SelectTrigger className="rounded-full">
                               <SelectValue placeholder="jpeg" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="rounded-lg">
                               <SelectItem value="png">PNG</SelectItem>
                               <SelectItem value="jpeg">JPEG</SelectItem>
                             </SelectContent>
@@ -324,7 +324,7 @@ export default function Home() {
 
               <Textarea
                 placeholder="Enter image prompt here"
-                className="max-h-[50vh] min-h-12 w-full px-4 py-3 max-md:py-2 border-none ml-10 pr-10 focus-visible:ring-0"
+                className="max-h-[50vh] min-h-16 w-full px-4 py-3 max-md:py-2 border-none ml-10 pr-10 focus-visible:ring-0"
                 defaultValue={state.prompt}
                 onFocus={handleFocusChange}
                 name="prompt"
@@ -333,7 +333,7 @@ export default function Home() {
               <Button
                 variant="default"
                 size="icon"
-                className="absolute right-3 top-3.5 max-md:right-2 my-auto rounded-full"
+                className="absolute right-3 bottom-3.5 max-md:right-2 my-auto rounded-full z-10"
                 disabled={isPending}
                 type="submit"
               >
